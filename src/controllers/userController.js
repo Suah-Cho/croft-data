@@ -1,5 +1,5 @@
 
-const user = require('../../models/users');
+const users = require('../../models/users');
 const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
 const { generateToken, refreshToken } = require('../utils/jwt');
@@ -7,7 +7,7 @@ const { generateToken, refreshToken } = require('../utils/jwt');
 // 모든 사용자 조회
 const getAllAbleUsers = async (req, res) => {
     try {
-        const results = await user.findAll({
+        const results = await users.findAll({
             where: {validation: true},
             attributes: ['id', 'user_name', 'email']
         });
@@ -33,7 +33,7 @@ const createUser = async (req, res) => {
         const { email, password, user_name, phone_number } = req.body;
 
         try {
-            const result = await user.findOne({
+            const result = await users.findOne({
                 where: {
                     [Op.or]: [
                         { email: email },
@@ -49,7 +49,7 @@ const createUser = async (req, res) => {
             } else {
                 const hashedPassword = await bcrypt.hash(password, 10);
 
-                const newUser = await user.create({
+                const newUser = await users.create({
                     email,
                     password: hashedPassword,
                     user_name,
@@ -81,9 +81,10 @@ const createUser = async (req, res) => {
 
 const getUserID = async (email) => {
     try {
-        const user_id = await user.findOne({
+        const user_id = await users.findOne({
             where: {email: email}
         })
+        return user_id.id;
     } catch (error) {
         console.error(error);
         throw error;
@@ -93,14 +94,22 @@ const getUserID = async (email) => {
 const deleteUser = async (req, res) => {
 
     try {
-        const result = await user.update({
-            validation: false
-        }, {
-            where: getUserID(req.username)
-        });
-        console.log(result);
+        const email = req.user.username;
+        // const userId = await getUserID(email);
+
+        const result = await users.update(
+            {validation: false},
+            {where: {email: email}}
+        );
+
+        if (result[0] === 0) {
+            return res.status(404).json({
+                message: 'User not found'
+            });
+        }
+
         res.status(200).json({
-            message: 'user delete successfully'
+            message: 'User deleted successfully'
         });
     } catch (error) {
         console.error(error);
